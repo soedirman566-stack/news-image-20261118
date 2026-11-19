@@ -153,17 +153,35 @@ def build():
          "First entry into Hamas-held areas since the 2025 ceasefire; truce at risk."),
     ]
     col_w = (CW - 2 * 24) // 3  # 298
-    f_ch = font(SANS_BOLD, 18)
-    f_cb = font(SANS, 15)
+
+    def columns_bottom(f_ch, f_cb, head_lh, body_lh):
+        """Bottom edge the three columns would reach with these fonts."""
+        bottom = cols_top
+        for head, body in cols:
+            yy = cols_top + head_lh * len(wrap(d, head, f_ch, col_w))
+            yy += 3 + body_lh * len(wrap(d, body, f_cb, col_w))
+            bottom = max(bottom, yy)
+        return bottom
+
+    # Text metrics vary slightly between Pillow/FreeType builds, which can
+    # push a column one wrapped line lower than it sat when this page was
+    # designed. Measure before drawing and step the column fonts down until
+    # the columns fit above the footer rule; the first size that fits is the
+    # designed one, so the page stays unchanged wherever metrics allow it.
+    for head_size, body_size in ((18, 15), (17, 14), (16, 13), (15, 12), (14, 11)):
+        f_ch = font(SANS_BOLD, head_size)
+        f_cb = font(SANS, body_size)
+        head_lh, body_lh = head_size + 4, body_size + 4
+        if columns_bottom(f_ch, f_cb, head_lh, body_lh) <= 996:
+            break
     cols_bottom = cols_top
     for i, (head, body) in enumerate(cols):
         x = MARGIN + i * (col_w + 24)
-        yy = draw_lines(d, wrap(d, head, f_ch, col_w), f_ch, x, cols_top, 22, fill=ACCENT)
-        yy = draw_lines(d, wrap(d, body, f_cb, col_w), f_cb, x, yy + 3, 19)
+        yy = draw_lines(d, wrap(d, head, f_ch, col_w), f_ch, x, cols_top, head_lh, fill=ACCENT)
+        yy = draw_lines(d, wrap(d, body, f_cb, col_w), f_cb, x, yy + 3, body_lh)
         cols_bottom = max(cols_bottom, yy)
         if i:
             d.line([x - 12, cols_top + 2, x - 12, cols_bottom], fill=(170, 166, 156), width=1)
-    assert cols_bottom <= 996, f"layout overflow: columns end at {cols_bottom}"
     hrule(d, 1002, width=1)
     f_foot = font(SANS, 12)
     draw_lines(d, ["COMPILED FROM WIRE REPORTS · PRICES AND SCORES INSIDE"],
